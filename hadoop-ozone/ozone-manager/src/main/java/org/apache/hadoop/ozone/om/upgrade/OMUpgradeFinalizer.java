@@ -18,6 +18,7 @@
 
 package org.apache.hadoop.ozone.om.upgrade;
 
+import org.apache.hadoop.hdds.upgrade.HDDSLayoutFeature;
 import org.apache.hadoop.ozone.common.Storage;
 import org.apache.hadoop.ozone.om.OzoneManager;
 
@@ -26,6 +27,9 @@ import java.io.IOException;
 import org.apache.hadoop.ozone.upgrade.BasicUpgradeFinalizer;
 import org.apache.hadoop.ozone.upgrade.LayoutFeature;
 import org.apache.hadoop.ozone.upgrade.UpgradeException;
+
+import static org.apache.hadoop.ozone.upgrade.UpgradeFinalizer.Status.FINALIZATION_DONE;
+import static org.apache.hadoop.ozone.upgrade.UpgradeFinalizer.Status.FINALIZATION_IN_PROGRESS;
 
 /**
  * UpgradeFinalizer implementation for the Ozone Manager service.
@@ -38,11 +42,40 @@ public class OMUpgradeFinalizer extends BasicUpgradeFinalizer<OzoneManager,
   }
 
   @Override
+  public void preFinalizeUpgrade(OzoneManager ozoneManager)
+      throws IOException {
+    if (!ozoneManager.getVersionManager().getUpgradeState().equals(FINALIZATION_IN_PROGRESS)) {
+      ozoneManager.getFinalizationStateManager().addFinalizingMark();
+      ozoneManager.getVersionManager().setUpgradeState(FINALIZATION_IN_PROGRESS);
+    }
+  }
+
+  @Override
   public void finalizeLayoutFeature(LayoutFeature layoutFeature,
       OzoneManager om) throws UpgradeException {
-    super.finalizeLayoutFeature(layoutFeature,
-        layoutFeature.action(LayoutFeature.UpgradeActionType.ON_FINALIZE),
-        om.getOmStorage());
+    try {
+      om.getFinalizationStateManager()
+          .finalizeLayoutFeature(layoutFeature.layoutVersion());
+    } catch (IOException ex) {
+      throw new UpgradeException(ex,
+          UpgradeException.ResultCodes.LAYOUT_FEATURE_FINALIZATION_FAILED);
+    }
+  }
+
+
+  void replicatedFinalizationSteps(OMLayoutFeature layoutFeature, OzoneManager om) throws UpgradeException {
+      super.finalizeLayoutFeature(layoutFeature,
+          layoutFeature.action(LayoutFeature.UpgradeActionType.ON_FINALIZE),
+          om.getOmStorage());
+  }
+
+  @Override
+  public void postFinalizeUpgrade(OzoneManager ozoneManager)
+      throws IOException {
+    if (ozoneManager.getVersionManager().getUpgradeState().equals(FINALIZATION_IN_PROGRESS)) {
+      ozoneManager.getFinalizationStateManager().removeFinalizingMark();
+      ozoneManager.getVersionManager().setUpgradeState(FINALIZATION_DONE);
+    }
   }
 
   public void runPrefinalizeStateActions(Storage storage, OzoneManager om)

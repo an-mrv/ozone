@@ -109,6 +109,7 @@ import org.apache.hadoop.ozone.om.service.OMRangerBGSyncService;
 import org.apache.hadoop.ozone.om.service.QuotaRepairTask;
 import org.apache.hadoop.ozone.om.snapshot.OmSnapshotUtils;
 import org.apache.hadoop.ozone.om.snapshot.ReferenceCounted;
+import org.apache.hadoop.ozone.om.upgrade.FinalizationStateManagerImpl;
 import org.apache.hadoop.ozone.om.upgrade.OMLayoutFeature;
 import org.apache.hadoop.ozone.security.acl.OzoneAuthorizerFactory;
 import org.apache.hadoop.ozone.snapshot.CancelSnapshotDiffResponse;
@@ -389,6 +390,7 @@ public final class OzoneManager extends ServiceRuntimeInfoImpl
   private KeyManager keyManager;
   private PrefixManagerImpl prefixManager;
   private final UpgradeFinalizer<OzoneManager> upgradeFinalizer;
+  private final FinalizationStateManagerImpl finalizationStateManager;
 
   /**
    * OM super user / admin list.
@@ -534,6 +536,7 @@ public final class OzoneManager extends ServiceRuntimeInfoImpl
 
     versionManager = new OMLayoutVersionManager(omStorage.getLayoutVersion());
     upgradeFinalizer = new OMUpgradeFinalizer(versionManager);
+    finalizationStateManager = new FinalizationStateManagerImpl(this);
     replicationConfigValidator =
         conf.getObject(ReplicationConfigValidator.class);
 
@@ -1654,6 +1657,14 @@ public final class OzoneManager extends ServiceRuntimeInfoImpl
 
   public OMPerformanceMetrics getPerfMetrics() {
     return perfMetrics;
+  }
+
+  public UpgradeFinalizer<OzoneManager> getUpgradeFinalizer() {
+    return upgradeFinalizer;
+  }
+
+  public FinalizationStateManagerImpl getFinalizationStateManager() {
+    return finalizationStateManager;
   }
 
   /**
