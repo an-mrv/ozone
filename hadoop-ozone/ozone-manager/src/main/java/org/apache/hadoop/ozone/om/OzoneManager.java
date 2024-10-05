@@ -109,8 +109,7 @@ import org.apache.hadoop.ozone.om.service.OMRangerBGSyncService;
 import org.apache.hadoop.ozone.om.service.QuotaRepairTask;
 import org.apache.hadoop.ozone.om.snapshot.OmSnapshotUtils;
 import org.apache.hadoop.ozone.om.snapshot.ReferenceCounted;
-import org.apache.hadoop.ozone.om.upgrade.FinalizationStateManagerImpl;
-import org.apache.hadoop.ozone.om.upgrade.OMLayoutFeature;
+import org.apache.hadoop.ozone.om.upgrade.*;
 import org.apache.hadoop.ozone.security.acl.OzoneAuthorizerFactory;
 import org.apache.hadoop.ozone.snapshot.CancelSnapshotDiffResponse;
 import org.apache.hadoop.ozone.snapshot.ListSnapshotResponse;
@@ -194,8 +193,6 @@ import org.apache.hadoop.hdds.utils.LegacyHadoopConfigurationSource;
 import org.apache.hadoop.hdds.utils.TransactionInfo;
 import org.apache.hadoop.ozone.om.ratis.OzoneManagerRatisServer;
 import org.apache.hadoop.ozone.om.ratis.utils.OzoneManagerRatisUtils;
-import org.apache.hadoop.ozone.om.upgrade.OMLayoutVersionManager;
-import org.apache.hadoop.ozone.om.upgrade.OMUpgradeFinalizer;
 import org.apache.hadoop.ozone.protocol.proto.OzoneManagerAdminProtocolProtos.OzoneManagerAdminService;
 import org.apache.hadoop.ozone.protocol.proto.OzoneManagerProtocolProtos;
 import org.apache.hadoop.ozone.protocol.proto.OzoneManagerProtocolProtos.DBUpdatesRequest;
@@ -390,7 +387,7 @@ public final class OzoneManager extends ServiceRuntimeInfoImpl
   private KeyManager keyManager;
   private PrefixManagerImpl prefixManager;
   private final UpgradeFinalizer<OzoneManager> upgradeFinalizer;
-  private final FinalizationStateManagerImpl finalizationStateManager;
+  private final FinalizationManager finalizationManager;
 
   /**
    * OM super user / admin list.
@@ -536,7 +533,7 @@ public final class OzoneManager extends ServiceRuntimeInfoImpl
 
     versionManager = new OMLayoutVersionManager(omStorage.getLayoutVersion());
     upgradeFinalizer = new OMUpgradeFinalizer(versionManager);
-    finalizationStateManager = new FinalizationStateManagerImpl(this);
+    finalizationManager = new FinalizationManagerImpl(this);
     replicationConfigValidator =
         conf.getObject(ReplicationConfigValidator.class);
 
@@ -1662,9 +1659,8 @@ public final class OzoneManager extends ServiceRuntimeInfoImpl
   public UpgradeFinalizer<OzoneManager> getUpgradeFinalizer() {
     return upgradeFinalizer;
   }
-
-  public FinalizationStateManagerImpl getFinalizationStateManager() {
-    return finalizationStateManager;
+  public FinalizationManager getFinalizationManager() {
+    return finalizationManager;
   }
 
   /**
@@ -1699,7 +1695,7 @@ public final class OzoneManager extends ServiceRuntimeInfoImpl
       omRatisServer.start();
     }
 
-    upgradeFinalizer.runPrefinalizeStateActions(omStorage, this);
+    finalizationManager.runPrefinalizeStateActions();
     Integer layoutVersionInDB = getLayoutVersionInDB();
     if (layoutVersionInDB == null ||
         versionManager.getMetadataLayoutVersion() != layoutVersionInDB) {
@@ -3432,11 +3428,7 @@ public final class OzoneManager extends ServiceRuntimeInfoImpl
   public StatusAndMessages queryUpgradeFinalizationProgress(
       String upgradeClientID, boolean takeover, boolean readonly
   ) throws IOException {
-    if (readonly) {
-      return new StatusAndMessages(upgradeFinalizer.getStatus(),
-          Collections.emptyList());
-    }
-    return upgradeFinalizer.reportStatus(upgradeClientID, takeover);
+    return finalizationManager.queryUpgradeFinalizationProgress(upgradeClientID, takeover, readonly);
   }
 
   /**

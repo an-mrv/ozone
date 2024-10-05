@@ -16,7 +16,8 @@ public interface FinalizationStateManager {
     void finalizeLayoutFeature(Integer layoutVersion)
         throws IOException;
 
+    boolean isHasFinalizingMark();
+
     void reinitialize(Table<String, String> newFinalizationStore)
         throws IOException;
-
 }

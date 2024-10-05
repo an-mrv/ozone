@@ -45,7 +45,7 @@ public class OMUpgradeFinalizer extends BasicUpgradeFinalizer<OzoneManager,
   public void preFinalizeUpgrade(OzoneManager ozoneManager)
       throws IOException {
     if (!ozoneManager.getVersionManager().getUpgradeState().equals(FINALIZATION_IN_PROGRESS)) {
-      ozoneManager.getFinalizationStateManager().addFinalizingMark();
+      ozoneManager.getFinalizationManager().getFinalizationStateManager().addFinalizingMark();
       ozoneManager.getVersionManager().setUpgradeState(FINALIZATION_IN_PROGRESS);
     }
   }
@@ -54,7 +54,7 @@ public class OMUpgradeFinalizer extends BasicUpgradeFinalizer<OzoneManager,
   public void finalizeLayoutFeature(LayoutFeature layoutFeature,
       OzoneManager om) throws UpgradeException {
     try {
-      om.getFinalizationStateManager()
+      om.getFinalizationManager().getFinalizationStateManager()
           .finalizeLayoutFeature(layoutFeature.layoutVersion());
     } catch (IOException ex) {
       throw new UpgradeException(ex,
@@ -73,7 +73,7 @@ public class OMUpgradeFinalizer extends BasicUpgradeFinalizer<OzoneManager,
   public void postFinalizeUpgrade(OzoneManager ozoneManager)
       throws IOException {
     if (ozoneManager.getVersionManager().getUpgradeState().equals(FINALIZATION_IN_PROGRESS)) {
-      ozoneManager.getFinalizationStateManager().removeFinalizingMark();
+      ozoneManager.getFinalizationManager().getFinalizationStateManager().removeFinalizingMark();
       ozoneManager.getVersionManager().setUpgradeState(FINALIZATION_DONE);
     }
   }
