@@ -48,7 +48,6 @@ public class FinalizationManagerImpl implements FinalizationManager {
     this.upgradeFinalizer = (OMUpgradeFinalizer) ozoneManager.getUpgradeFinalizer();
     this.omStorage = ozoneManager.getOmStorage();
     this.finalizationStateManager = new FinalizationStateManagerImpl(ozoneManager);
-    ;
 
     String prefix = ozoneManager.getThreadNamePrefix();
     this.threadFactory = new ThreadFactoryBuilder()
