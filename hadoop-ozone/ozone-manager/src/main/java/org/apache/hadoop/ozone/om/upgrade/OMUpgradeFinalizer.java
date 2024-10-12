@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
+ * <p>
+ * http://www.apache.org/licenses/LICENSE-2.0
+ * <p>
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -18,7 +18,6 @@
 
 package org.apache.hadoop.ozone.om.upgrade;
 
-import org.apache.hadoop.hdds.upgrade.HDDSLayoutFeature;
 import org.apache.hadoop.ozone.common.Storage;
 import org.apache.hadoop.ozone.om.OzoneManager;
 
@@ -52,7 +51,7 @@ public class OMUpgradeFinalizer extends BasicUpgradeFinalizer<OzoneManager,
 
   @Override
   public void finalizeLayoutFeature(LayoutFeature layoutFeature,
-      OzoneManager om) throws UpgradeException {
+                                    OzoneManager om) throws UpgradeException {
     try {
       om.getFinalizationManager().getFinalizationStateManager()
           .finalizeLayoutFeature(layoutFeature.layoutVersion());
@@ -64,9 +63,9 @@ public class OMUpgradeFinalizer extends BasicUpgradeFinalizer<OzoneManager,
 
 
   void replicatedFinalizationSteps(OMLayoutFeature layoutFeature, OzoneManager om) throws UpgradeException {
-      super.finalizeLayoutFeature(layoutFeature,
-          layoutFeature.action(LayoutFeature.UpgradeActionType.ON_FINALIZE),
-          om.getOmStorage());
+    super.finalizeLayoutFeature(layoutFeature,
+        layoutFeature.action(LayoutFeature.UpgradeActionType.ON_FINALIZE),
+        om.getOmStorage());
   }
 
   @Override

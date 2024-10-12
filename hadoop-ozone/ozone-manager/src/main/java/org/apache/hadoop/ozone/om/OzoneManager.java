@@ -109,7 +109,11 @@ import org.apache.hadoop.ozone.om.service.OMRangerBGSyncService;
 import org.apache.hadoop.ozone.om.service.QuotaRepairTask;
 import org.apache.hadoop.ozone.om.snapshot.OmSnapshotUtils;
 import org.apache.hadoop.ozone.om.snapshot.ReferenceCounted;
-import org.apache.hadoop.ozone.om.upgrade.*;
+import org.apache.hadoop.ozone.om.upgrade.FinalizationManager;
+import org.apache.hadoop.ozone.om.upgrade.FinalizationManagerImpl;
+import org.apache.hadoop.ozone.om.upgrade.OMLayoutFeature;
+import org.apache.hadoop.ozone.om.upgrade.OMLayoutVersionManager;
+import org.apache.hadoop.ozone.om.upgrade.OMUpgradeFinalizer;
 import org.apache.hadoop.ozone.security.acl.OzoneAuthorizerFactory;
 import org.apache.hadoop.ozone.snapshot.CancelSnapshotDiffResponse;
 import org.apache.hadoop.ozone.snapshot.ListSnapshotResponse;
@@ -891,24 +895,7 @@ public final class OzoneManager extends ServiceRuntimeInfoImpl
     updateActiveSnapshotMetrics();
 
     if (withNewSnapshot) {
-      Integer layoutVersionInDB = getLayoutVersionInDB();
-      if (layoutVersionInDB != null &&
-          versionManager.getMetadataLayoutVersion() < layoutVersionInDB) {
-        LOG.info("New OM snapshot received with higher layout version {}. " +
-            "Attempting to finalize current OM to that version.",
-            layoutVersionInDB);
-        OmUpgradeConfig uConf = configuration.getObject(OmUpgradeConfig.class);
-        upgradeFinalizer.finalizeAndWaitForCompletion(
-            "om-ratis-snapshot", this,
-            uConf.getRatisBasedFinalizationTimeout());
-        if (versionManager.getMetadataLayoutVersion() < layoutVersionInDB) {
-          throw new IOException("Unable to finalize OM to the desired layout " +
-              "version " + layoutVersionInDB + " present in the snapshot DB.");
-        } else {
-          updateLayoutVersionInDB(versionManager, metadataManager);
-        }
-      }
-
+      finalizationManager.reinitialize(metadataManager.getMetaTable());
       instantiatePrepareStateAfterSnapshot();
     } else {
       // Prepare state depends on the transaction ID of metadataManager after a
@@ -1659,6 +1646,7 @@ public final class OzoneManager extends ServiceRuntimeInfoImpl
   public UpgradeFinalizer<OzoneManager> getUpgradeFinalizer() {
     return upgradeFinalizer;
   }
+
   public FinalizationManager getFinalizationManager() {
     return finalizationManager;
   }
@@ -3421,7 +3409,7 @@ public final class OzoneManager extends ServiceRuntimeInfoImpl
   @Override
   public StatusAndMessages finalizeUpgrade(String upgradeClientID)
       throws IOException {
-    return upgradeFinalizer.finalize(upgradeClientID, this);
+    return finalizationManager.finalizeUpgrade(upgradeClientID);
   }
 
   @Override
