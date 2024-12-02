@@ -82,9 +82,11 @@ import org.apache.hadoop.ozone.om.request.snapshot.OMSnapshotMoveTableKeysReques
 import org.apache.hadoop.ozone.om.request.snapshot.OMSnapshotPurgeRequest;
 import org.apache.hadoop.ozone.om.request.snapshot.OMSnapshotRenameRequest;
 import org.apache.hadoop.ozone.om.request.snapshot.OMSnapshotSetPropertyRequest;
+import org.apache.hadoop.ozone.om.request.upgrade.OMAddFinalizingMarkRequest;
 import org.apache.hadoop.ozone.om.request.upgrade.OMCancelPrepareRequest;
-import org.apache.hadoop.ozone.om.request.upgrade.OMFinalizeUpgradeRequest;
+import org.apache.hadoop.ozone.om.request.upgrade.OMFinalizeLayoutFeatureRequest;
 import org.apache.hadoop.ozone.om.request.upgrade.OMPrepareRequest;
+import org.apache.hadoop.ozone.om.request.upgrade.OMRemoveFinalizingMarkRequest;
 import org.apache.hadoop.ozone.om.request.util.OMEchoRPCWriteRequest;
 import org.apache.hadoop.ozone.om.request.volume.OMQuotaRepairRequest;
 import org.apache.hadoop.ozone.om.request.volume.OMVolumeCreateRequest;
@@ -149,204 +151,208 @@ public final class OzoneManagerRatisUtils {
     String bucketName = "";
 
     switch (cmdType) {
-    case CreateVolume:
-      return new OMVolumeCreateRequest(omRequest);
-    case SetVolumeProperty:
-      boolean hasQuota = omRequest.getSetVolumePropertyRequest()
-          .hasQuotaInBytes();
-      boolean hasOwner = omRequest.getSetVolumePropertyRequest().hasOwnerName();
-      Preconditions.checkState(hasOwner || hasQuota, "Either Quota or owner " +
-          "should be set in the SetVolumeProperty request");
-      Preconditions.checkState(!(hasOwner && hasQuota), "Either Quota or " +
-          "owner should be set in the SetVolumeProperty request. Should not " +
-          "set both");
-      if (hasQuota) {
-        return new OMVolumeSetQuotaRequest(omRequest);
-      } else {
-        return new OMVolumeSetOwnerRequest(omRequest);
-      }
-    case DeleteVolume:
-      return new OMVolumeDeleteRequest(omRequest);
-    case CreateBucket:
-      return new OMBucketCreateRequest(omRequest);
-    case DeleteBucket:
-      return new OMBucketDeleteRequest(omRequest);
-    case SetBucketProperty:
-      boolean hasBucketOwner = omRequest.getSetBucketPropertyRequest()
-          .getBucketArgs().hasOwnerName();
-      if (hasBucketOwner) {
-        return new OMBucketSetOwnerRequest(omRequest);
-      } else {
-        return new OMBucketSetPropertyRequest(omRequest);
-      }
-    case AddAcl:
-    case RemoveAcl:
-    case SetAcl:
-      return getOMAclRequest(omRequest, ozoneManager);
-    case GetDelegationToken:
-      return new OMGetDelegationTokenRequest(omRequest);
-    case CancelDelegationToken:
-      return new OMCancelDelegationTokenRequest(omRequest);
-    case RenewDelegationToken:
-      return new OMRenewDelegationTokenRequest(omRequest);
-    case GetS3Secret:
-      return new S3GetSecretRequest(omRequest);
-    case FinalizeUpgrade:
-      return new OMFinalizeUpgradeRequest(omRequest);
-    case Prepare:
-      return new OMPrepareRequest(omRequest);
-    case CancelPrepare:
-      return new OMCancelPrepareRequest(omRequest);
-    case SetS3Secret:
-      return new OMSetSecretRequest(omRequest);
-    case RevokeS3Secret:
-      return new S3RevokeSecretRequest(omRequest);
-    case PurgeKeys:
-      return new OMKeyPurgeRequest(omRequest);
-    case PurgeDirectories:
-      return new OMDirectoriesPurgeRequestWithFSO(omRequest);
-    case CreateTenant:
-      ozoneManager.checkS3MultiTenancyEnabled();
-      return new OMTenantCreateRequest(omRequest);
-    case DeleteTenant:
-      ozoneManager.checkS3MultiTenancyEnabled();
-      return new OMTenantDeleteRequest(omRequest);
-    case TenantAssignUserAccessId:
-      ozoneManager.checkS3MultiTenancyEnabled();
-      return new OMTenantAssignUserAccessIdRequest(omRequest);
-    case TenantRevokeUserAccessId:
-      ozoneManager.checkS3MultiTenancyEnabled();
-      return new OMTenantRevokeUserAccessIdRequest(omRequest);
-    case TenantAssignAdmin:
-      ozoneManager.checkS3MultiTenancyEnabled();
-      return new OMTenantAssignAdminRequest(omRequest);
-    case TenantRevokeAdmin:
-      ozoneManager.checkS3MultiTenancyEnabled();
-      return new OMTenantRevokeAdminRequest(omRequest);
-    case SetRangerServiceVersion:
-      return new OMSetRangerServiceVersionRequest(omRequest);
-    case CreateSnapshot:
-      return new OMSnapshotCreateRequest(omRequest);
-    case DeleteSnapshot:
-      return new OMSnapshotDeleteRequest(omRequest);
-    case RenameSnapshot:
-      return new OMSnapshotRenameRequest(omRequest);
-    case SnapshotMoveDeletedKeys:
-      return new OMSnapshotMoveDeletedKeysRequest(omRequest);
-    case SnapshotMoveTableKeys:
-      return new OMSnapshotMoveTableKeysRequest(omRequest);
-    case SnapshotPurge:
-      return new OMSnapshotPurgeRequest(omRequest);
-    case SetSnapshotProperty:
-      return new OMSnapshotSetPropertyRequest(omRequest);
-    case DeleteOpenKeys:
-      BucketLayout bktLayout = BucketLayout.DEFAULT;
-      if (omRequest.getDeleteOpenKeysRequest().hasBucketLayout()) {
-        bktLayout = BucketLayout.fromProto(
-            omRequest.getDeleteOpenKeysRequest().getBucketLayout());
-      }
-      return new OMOpenKeysDeleteRequest(omRequest, bktLayout);
-    case RecoverLease:
-      volumeName = omRequest.getRecoverLeaseRequest().getVolumeName();
-      bucketName = omRequest.getRecoverLeaseRequest().getBucketName();
-      bucketLayout =
-        getBucketLayout(ozoneManager.getMetadataManager(), volumeName,
-          bucketName);
-      if (bucketLayout != BucketLayout.FILE_SYSTEM_OPTIMIZED) {
-        throw new IOException("Bucket " + bucketName + " is not FSO layout. " +
-                "It does not support lease recovery");
-      }
-      return new OMRecoverLeaseRequest(omRequest);
-    /*
-     * Key requests that can have multiple variants based on the bucket layout
-     * should be created using {@link BucketLayoutAwareOMKeyRequestFactory}.
-     */
-    case CreateDirectory:
-      keyArgs = omRequest.getCreateDirectoryRequest().getKeyArgs();
-      volumeName = keyArgs.getVolumeName();
-      bucketName = keyArgs.getBucketName();
-      break;
-    case CreateFile:
-      keyArgs = omRequest.getCreateFileRequest().getKeyArgs();
-      volumeName = keyArgs.getVolumeName();
-      bucketName = keyArgs.getBucketName();
-      break;
-    case CreateKey:
-      keyArgs = omRequest.getCreateKeyRequest().getKeyArgs();
-      volumeName = keyArgs.getVolumeName();
-      bucketName = keyArgs.getBucketName();
-      break;
-    case AllocateBlock:
-      keyArgs = omRequest.getAllocateBlockRequest().getKeyArgs();
-      volumeName = keyArgs.getVolumeName();
-      bucketName = keyArgs.getBucketName();
-      break;
-    case CommitKey:
-      keyArgs = omRequest.getCommitKeyRequest().getKeyArgs();
-      volumeName = keyArgs.getVolumeName();
-      bucketName = keyArgs.getBucketName();
-      break;
-    case DeleteKey:
-      keyArgs = omRequest.getDeleteKeyRequest().getKeyArgs();
-      volumeName = keyArgs.getVolumeName();
-      bucketName = keyArgs.getBucketName();
-      break;
-    case DeleteKeys:
-      OzoneManagerProtocolProtos.DeleteKeyArgs deleteKeyArgs =
-          omRequest.getDeleteKeysRequest()
-              .getDeleteKeys();
-      volumeName = deleteKeyArgs.getVolumeName();
-      bucketName = deleteKeyArgs.getBucketName();
-      break;
-    case RenameKey:
-      keyArgs = omRequest.getRenameKeyRequest().getKeyArgs();
-      volumeName = keyArgs.getVolumeName();
-      bucketName = keyArgs.getBucketName();
-      break;
-    case RenameKeys:
-      OzoneManagerProtocolProtos.RenameKeysArgs renameKeysArgs =
-          omRequest.getRenameKeysRequest().getRenameKeysArgs();
-      volumeName = renameKeysArgs.getVolumeName();
-      bucketName = renameKeysArgs.getBucketName();
-      break;
-    case InitiateMultiPartUpload:
-      keyArgs = omRequest.getInitiateMultiPartUploadRequest().getKeyArgs();
-      volumeName = keyArgs.getVolumeName();
-      bucketName = keyArgs.getBucketName();
-      break;
-    case CommitMultiPartUpload:
-      keyArgs = omRequest.getCommitMultiPartUploadRequest().getKeyArgs();
-      volumeName = keyArgs.getVolumeName();
-      bucketName = keyArgs.getBucketName();
-      break;
-    case AbortMultiPartUpload:
-      keyArgs = omRequest.getAbortMultiPartUploadRequest().getKeyArgs();
-      volumeName = keyArgs.getVolumeName();
-      bucketName = keyArgs.getBucketName();
-      break;
-    case CompleteMultiPartUpload:
-      keyArgs = omRequest.getCompleteMultiPartUploadRequest().getKeyArgs();
-      volumeName = keyArgs.getVolumeName();
-      bucketName = keyArgs.getBucketName();
-      break;
-    case SetTimes:
-      keyArgs = omRequest.getSetTimesRequest().getKeyArgs();
-      volumeName = keyArgs.getVolumeName();
-      bucketName = keyArgs.getBucketName();
-      break;
-    case EchoRPC:
-      return new OMEchoRPCWriteRequest(omRequest);
-    case AbortExpiredMultiPartUploads:
-      return new S3ExpiredMultipartUploadsAbortRequest(omRequest);
-    case QuotaRepair:
-      return new OMQuotaRepairRequest(omRequest);
-    default:
-      throw new OMException("Unrecognized write command type request "
-          + cmdType, OMException.ResultCodes.INVALID_REQUEST);
+      case CreateVolume:
+        return new OMVolumeCreateRequest(omRequest);
+      case SetVolumeProperty:
+        boolean hasQuota = omRequest.getSetVolumePropertyRequest()
+                .hasQuotaInBytes();
+        boolean hasOwner = omRequest.getSetVolumePropertyRequest().hasOwnerName();
+        Preconditions.checkState(hasOwner || hasQuota, "Either Quota or owner " +
+                "should be set in the SetVolumeProperty request");
+        Preconditions.checkState(!(hasOwner && hasQuota), "Either Quota or " +
+                "owner should be set in the SetVolumeProperty request. Should not " +
+                "set both");
+        if (hasQuota) {
+          return new OMVolumeSetQuotaRequest(omRequest);
+        } else {
+          return new OMVolumeSetOwnerRequest(omRequest);
+        }
+      case DeleteVolume:
+        return new OMVolumeDeleteRequest(omRequest);
+      case CreateBucket:
+        return new OMBucketCreateRequest(omRequest);
+      case DeleteBucket:
+        return new OMBucketDeleteRequest(omRequest);
+      case SetBucketProperty:
+        boolean hasBucketOwner = omRequest.getSetBucketPropertyRequest()
+                .getBucketArgs().hasOwnerName();
+        if (hasBucketOwner) {
+          return new OMBucketSetOwnerRequest(omRequest);
+        } else {
+          return new OMBucketSetPropertyRequest(omRequest);
+        }
+      case AddAcl:
+      case RemoveAcl:
+      case SetAcl:
+        return getOMAclRequest(omRequest, ozoneManager);
+      case GetDelegationToken:
+        return new OMGetDelegationTokenRequest(omRequest);
+      case CancelDelegationToken:
+        return new OMCancelDelegationTokenRequest(omRequest);
+      case RenewDelegationToken:
+        return new OMRenewDelegationTokenRequest(omRequest);
+      case GetS3Secret:
+        return new S3GetSecretRequest(omRequest);
+      case AddFinalizingMark:
+        return new OMAddFinalizingMarkRequest(omRequest);
+      case RemoveFinalizingMark:
+        return new OMRemoveFinalizingMarkRequest(omRequest);
+      case FinalizeLayoutFeature:
+        return new OMFinalizeLayoutFeatureRequest(omRequest);
+      case Prepare:
+        return new OMPrepareRequest(omRequest);
+      case CancelPrepare:
+        return new OMCancelPrepareRequest(omRequest);
+      case SetS3Secret:
+        return new OMSetSecretRequest(omRequest);
+      case RevokeS3Secret:
+        return new S3RevokeSecretRequest(omRequest);
+      case PurgeKeys:
+        return new OMKeyPurgeRequest(omRequest);
+      case PurgeDirectories:
+        return new OMDirectoriesPurgeRequestWithFSO(omRequest);
+      case CreateTenant:
+        ozoneManager.checkS3MultiTenancyEnabled();
+        return new OMTenantCreateRequest(omRequest);
+      case DeleteTenant:
+        ozoneManager.checkS3MultiTenancyEnabled();
+        return new OMTenantDeleteRequest(omRequest);
+      case TenantAssignUserAccessId:
+        ozoneManager.checkS3MultiTenancyEnabled();
+        return new OMTenantAssignUserAccessIdRequest(omRequest);
+      case TenantRevokeUserAccessId:
+        ozoneManager.checkS3MultiTenancyEnabled();
+        return new OMTenantRevokeUserAccessIdRequest(omRequest);
+      case TenantAssignAdmin:
+        ozoneManager.checkS3MultiTenancyEnabled();
+        return new OMTenantAssignAdminRequest(omRequest);
+      case TenantRevokeAdmin:
+        ozoneManager.checkS3MultiTenancyEnabled();
+        return new OMTenantRevokeAdminRequest(omRequest);
+      case SetRangerServiceVersion:
+        return new OMSetRangerServiceVersionRequest(omRequest);
+      case CreateSnapshot:
+        return new OMSnapshotCreateRequest(omRequest);
+      case DeleteSnapshot:
+        return new OMSnapshotDeleteRequest(omRequest);
+      case RenameSnapshot:
+        return new OMSnapshotRenameRequest(omRequest);
+      case SnapshotMoveDeletedKeys:
+        return new OMSnapshotMoveDeletedKeysRequest(omRequest);
+      case SnapshotMoveTableKeys:
+        return new OMSnapshotMoveTableKeysRequest(omRequest);
+      case SnapshotPurge:
+        return new OMSnapshotPurgeRequest(omRequest);
+      case SetSnapshotProperty:
+        return new OMSnapshotSetPropertyRequest(omRequest);
+      case DeleteOpenKeys:
+        BucketLayout bktLayout = BucketLayout.DEFAULT;
+        if (omRequest.getDeleteOpenKeysRequest().hasBucketLayout()) {
+          bktLayout = BucketLayout.fromProto(
+                  omRequest.getDeleteOpenKeysRequest().getBucketLayout());
+        }
+        return new OMOpenKeysDeleteRequest(omRequest, bktLayout);
+      case RecoverLease:
+        volumeName = omRequest.getRecoverLeaseRequest().getVolumeName();
+        bucketName = omRequest.getRecoverLeaseRequest().getBucketName();
+        bucketLayout =
+                getBucketLayout(ozoneManager.getMetadataManager(), volumeName,
+                        bucketName);
+        if (bucketLayout != BucketLayout.FILE_SYSTEM_OPTIMIZED) {
+          throw new IOException("Bucket " + bucketName + " is not FSO layout. " +
+                  "It does not support lease recovery");
+        }
+        return new OMRecoverLeaseRequest(omRequest);
+      /*
+       * Key requests that can have multiple variants based on the bucket layout
+       * should be created using {@link BucketLayoutAwareOMKeyRequestFactory}.
+       */
+      case CreateDirectory:
+        keyArgs = omRequest.getCreateDirectoryRequest().getKeyArgs();
+        volumeName = keyArgs.getVolumeName();
+        bucketName = keyArgs.getBucketName();
+        break;
+      case CreateFile:
+        keyArgs = omRequest.getCreateFileRequest().getKeyArgs();
+        volumeName = keyArgs.getVolumeName();
+        bucketName = keyArgs.getBucketName();
+        break;
+      case CreateKey:
+        keyArgs = omRequest.getCreateKeyRequest().getKeyArgs();
+        volumeName = keyArgs.getVolumeName();
+        bucketName = keyArgs.getBucketName();
+        break;
+      case AllocateBlock:
+        keyArgs = omRequest.getAllocateBlockRequest().getKeyArgs();
+        volumeName = keyArgs.getVolumeName();
+        bucketName = keyArgs.getBucketName();
+        break;
+      case CommitKey:
+        keyArgs = omRequest.getCommitKeyRequest().getKeyArgs();
+        volumeName = keyArgs.getVolumeName();
+        bucketName = keyArgs.getBucketName();
+        break;
+      case DeleteKey:
+        keyArgs = omRequest.getDeleteKeyRequest().getKeyArgs();
+        volumeName = keyArgs.getVolumeName();
+        bucketName = keyArgs.getBucketName();
+        break;
+      case DeleteKeys:
+        OzoneManagerProtocolProtos.DeleteKeyArgs deleteKeyArgs =
+                omRequest.getDeleteKeysRequest()
+                        .getDeleteKeys();
+        volumeName = deleteKeyArgs.getVolumeName();
+        bucketName = deleteKeyArgs.getBucketName();
+        break;
+      case RenameKey:
+        keyArgs = omRequest.getRenameKeyRequest().getKeyArgs();
+        volumeName = keyArgs.getVolumeName();
+        bucketName = keyArgs.getBucketName();
+        break;
+      case RenameKeys:
+        OzoneManagerProtocolProtos.RenameKeysArgs renameKeysArgs =
+                omRequest.getRenameKeysRequest().getRenameKeysArgs();
+        volumeName = renameKeysArgs.getVolumeName();
+        bucketName = renameKeysArgs.getBucketName();
+        break;
+      case InitiateMultiPartUpload:
+        keyArgs = omRequest.getInitiateMultiPartUploadRequest().getKeyArgs();
+        volumeName = keyArgs.getVolumeName();
+        bucketName = keyArgs.getBucketName();
+        break;
+      case CommitMultiPartUpload:
+        keyArgs = omRequest.getCommitMultiPartUploadRequest().getKeyArgs();
+        volumeName = keyArgs.getVolumeName();
+        bucketName = keyArgs.getBucketName();
+        break;
+      case AbortMultiPartUpload:
+        keyArgs = omRequest.getAbortMultiPartUploadRequest().getKeyArgs();
+        volumeName = keyArgs.getVolumeName();
+        bucketName = keyArgs.getBucketName();
+        break;
+      case CompleteMultiPartUpload:
+        keyArgs = omRequest.getCompleteMultiPartUploadRequest().getKeyArgs();
+        volumeName = keyArgs.getVolumeName();
+        bucketName = keyArgs.getBucketName();
+        break;
+      case SetTimes:
+        keyArgs = omRequest.getSetTimesRequest().getKeyArgs();
+        volumeName = keyArgs.getVolumeName();
+        bucketName = keyArgs.getBucketName();
+        break;
+      case EchoRPC:
+        return new OMEchoRPCWriteRequest(omRequest);
+      case AbortExpiredMultiPartUploads:
+        return new S3ExpiredMultipartUploadsAbortRequest(omRequest);
+      case QuotaRepair:
+        return new OMQuotaRepairRequest(omRequest);
+      default:
+        throw new OMException("Unrecognized write command type request "
+                + cmdType, OMException.ResultCodes.INVALID_REQUEST);
     }
 
     return BucketLayoutAwareOMKeyRequestFactory.createRequest(
-        volumeName, bucketName, omRequest, ozoneManager.getMetadataManager());
+            volumeName, bucketName, omRequest, ozoneManager.getMetadataManager());
   }
 
   private static OMClientRequest getOMAclRequest(OMRequest omRequest,

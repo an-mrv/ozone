@@ -24,11 +24,17 @@ import java.io.IOException;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
+import com.google.protobuf.ServiceException;
 import org.apache.hadoop.hdds.utils.db.Table;
 import org.apache.hadoop.ozone.OzoneConsts;
 import org.apache.hadoop.ozone.om.OzoneManager;
+import org.apache.ratis.protocol.ClientId;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.apache.hadoop.ozone.protocol.proto.OzoneManagerProtocolProtos.OMRequest;
+import org.apache.hadoop.ozone.protocol.proto.OzoneManagerProtocolProtos.LayoutVersion;
+
+import static org.apache.hadoop.ozone.protocol.proto.OzoneManagerProtocolProtos.Type.FinalizeLayoutFeature;
 
 public class FinalizationStateManagerImpl implements FinalizationStateManager {
 
@@ -69,15 +75,26 @@ public class FinalizationStateManagerImpl implements FinalizationStateManager {
     } finally {
       lock.writeLock().unlock();
     }
-    metaTable.put(OzoneConsts.FINALIZING_KEY, "");
   }
 
   @Override
   public void finalizeLayoutFeature(Integer layoutVersion) throws IOException {
-    finalizeLayoutFeatureLocal(layoutVersion);
+    LayoutVersion lv = LayoutVersion.newBuilder()
+            .setVersion(layoutVersion)
+            .build();
+    final OMRequest omRequest = OMRequest.newBuilder()
+            .setCmdType(FinalizeLayoutFeature)
+            .setClientId(ClientId.randomId().toString())
+            .setLayoutVersion(lv)
+            .build();
+      try {
+          ozoneManager.getOmRatisServer().submitRequest(omRequest);
+      } catch (ServiceException e) {
+        LOG.error("Finalize layout feature request failed.", e);
+      }
   }
 
-  private void finalizeLayoutFeatureLocal(Integer layoutVersion)
+  public void finalizeLayoutFeatureLocal(Integer layoutVersion)
       throws IOException {
     lock.writeLock().lock();
     try {
@@ -93,6 +110,7 @@ public class FinalizationStateManagerImpl implements FinalizationStateManager {
 
   @Override
   public void removeFinalizingMark() throws IOException {
+    //запрос в ратис
     lock.writeLock().lock();
     try {
       hasFinalizingMark = false;
