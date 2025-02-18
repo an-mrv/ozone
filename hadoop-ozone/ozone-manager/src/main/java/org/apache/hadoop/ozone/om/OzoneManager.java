@@ -750,6 +750,7 @@ public final class OzoneManager extends ServiceRuntimeInfoImpl
     }
 
     bucketUtilizationMetrics = BucketUtilizationMetrics.create(metadataManager);
+    finalizationManager = new FinalizationManagerImpl(this);
   }
 
   public boolean isStopped() {
