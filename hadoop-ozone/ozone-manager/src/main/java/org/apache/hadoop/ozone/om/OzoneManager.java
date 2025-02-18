@@ -537,7 +537,6 @@ public final class OzoneManager extends ServiceRuntimeInfoImpl
 
     versionManager = new OMLayoutVersionManager(omStorage.getLayoutVersion());
     upgradeFinalizer = new OMUpgradeFinalizer(versionManager);
-    finalizationManager = new FinalizationManagerImpl(this);
     replicationConfigValidator =
         conf.getObject(ReplicationConfigValidator.class);
 
