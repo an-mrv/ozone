@@ -78,13 +78,13 @@ public class FinalizationStateManagerImpl implements FinalizationStateManager {
   }
 
   @Override
-  public void finalizeLayoutFeature(Integer layoutVersion) throws IOException {
+  public void finalizeLayoutFeature(Integer layoutVersion, String clientId) throws IOException {
     LayoutVersion lv = LayoutVersion.newBuilder()
             .setVersion(layoutVersion)
             .build();
     final OMRequest omRequest = OMRequest.newBuilder()
             .setCmdType(FinalizeLayoutFeature)
-            .setClientId(ClientId.randomId().toString())
+            .setClientId(clientId)
             .setLayoutVersion(lv)
             .build();
       try {

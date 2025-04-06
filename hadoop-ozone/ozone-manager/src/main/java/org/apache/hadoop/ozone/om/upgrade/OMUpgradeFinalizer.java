@@ -47,7 +47,7 @@ public class OMUpgradeFinalizer extends BasicUpgradeFinalizer<OzoneManager,
   public void preFinalizeUpgrade(OzoneManager ozoneManager) {
     final OMRequest omRequest = OMRequest.newBuilder()
             .setCmdType(AddFinalizingMark)
-            .setClientId(ClientId.randomId().toString())
+            .setClientId(this.getClientId())
             .build();
     try {
       ozoneManager.getOmRatisServer().submitRequest(omRequest);
@@ -61,7 +61,7 @@ public class OMUpgradeFinalizer extends BasicUpgradeFinalizer<OzoneManager,
                                     OzoneManager om) throws UpgradeException {
     try {
       om.getFinalizationManager().getFinalizationStateManager()
-          .finalizeLayoutFeature(layoutFeature.layoutVersion());
+          .finalizeLayoutFeature(layoutFeature.layoutVersion(), this.getClientId());
     } catch (IOException ex) {
       throw new UpgradeException(ex,
           UpgradeException.ResultCodes.LAYOUT_FEATURE_FINALIZATION_FAILED);
@@ -79,7 +79,7 @@ public class OMUpgradeFinalizer extends BasicUpgradeFinalizer<OzoneManager,
   public void postFinalizeUpgrade(OzoneManager ozoneManager) {
     final OMRequest omRequest = OMRequest.newBuilder()
             .setCmdType(RemoveFinalizingMark)
-            .setClientId(ClientId.randomId().toString())
+            .setClientId(this.getClientId())
             .build();
     try {
       ozoneManager.getOmRatisServer().submitRequest(omRequest);

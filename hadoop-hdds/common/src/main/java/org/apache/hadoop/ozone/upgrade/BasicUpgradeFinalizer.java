@@ -239,6 +239,10 @@ public abstract class BasicUpgradeFinalizer
     }
   }
 
+  public String getClientId() {
+    return this.clientID;
+  }
+
   private static boolean isFinalized(Status status) {
     return status.equals(Status.ALREADY_FINALIZED)
         || status.equals(FINALIZATION_DONE);
