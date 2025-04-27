@@ -24,6 +24,7 @@ import org.apache.hadoop.ozone.om.OzoneManager;
 
 import java.io.IOException;
 
+import org.apache.hadoop.ozone.om.ratis.utils.OzoneManagerRatisUtils;
 import org.apache.hadoop.ozone.protocol.proto.OzoneManagerProtocolProtos.OMRequest;
 import org.apache.hadoop.ozone.upgrade.BasicUpgradeFinalizer;
 import org.apache.hadoop.ozone.upgrade.LayoutFeature;
@@ -38,6 +39,7 @@ import static org.apache.hadoop.ozone.protocol.proto.OzoneManagerProtocolProtos.
  */
 public class OMUpgradeFinalizer extends BasicUpgradeFinalizer<OzoneManager,
     OMLayoutVersionManager> {
+  private static final ClientId CLIENT_ID = ClientId.randomId();
 
   public OMUpgradeFinalizer(OMLayoutVersionManager versionManager) {
     super(versionManager);
@@ -47,10 +49,10 @@ public class OMUpgradeFinalizer extends BasicUpgradeFinalizer<OzoneManager,
   public void preFinalizeUpgrade(OzoneManager ozoneManager) {
     final OMRequest omRequest = OMRequest.newBuilder()
             .setCmdType(AddFinalizingMark)
-            .setClientId(this.getClientId())
+            .setClientId(ClientId.randomId().toString())
             .build();
     try {
-      ozoneManager.getOmRatisServer().submitRequest(omRequest);
+      OzoneManagerRatisUtils.submitRequest(ozoneManager, omRequest, CLIENT_ID, 0);
     } catch (ServiceException e) {
       LOG.error("Add finalizing mark request failed.", e);
     }
@@ -61,7 +63,7 @@ public class OMUpgradeFinalizer extends BasicUpgradeFinalizer<OzoneManager,
                                     OzoneManager om) throws UpgradeException {
     try {
       om.getFinalizationManager().getFinalizationStateManager()
-          .finalizeLayoutFeature(layoutFeature.layoutVersion(), this.getClientId());
+          .finalizeLayoutFeature(layoutFeature.layoutVersion());
     } catch (IOException ex) {
       throw new UpgradeException(ex,
           UpgradeException.ResultCodes.LAYOUT_FEATURE_FINALIZATION_FAILED);
@@ -79,10 +81,10 @@ public class OMUpgradeFinalizer extends BasicUpgradeFinalizer<OzoneManager,
   public void postFinalizeUpgrade(OzoneManager ozoneManager) {
     final OMRequest omRequest = OMRequest.newBuilder()
             .setCmdType(RemoveFinalizingMark)
-            .setClientId(this.getClientId())
+            .setClientId(ClientId.randomId().toString())
             .build();
     try {
-      ozoneManager.getOmRatisServer().submitRequest(omRequest);
+      OzoneManagerRatisUtils.submitRequest(ozoneManager, omRequest, CLIENT_ID, 0);
     } catch (ServiceException e) {
       LOG.error("Remove finalizing mark request failed.", e);
     }

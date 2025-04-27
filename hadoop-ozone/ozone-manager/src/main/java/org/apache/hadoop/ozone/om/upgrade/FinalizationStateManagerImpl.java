@@ -28,6 +28,7 @@ import com.google.protobuf.ServiceException;
 import org.apache.hadoop.hdds.utils.db.Table;
 import org.apache.hadoop.ozone.OzoneConsts;
 import org.apache.hadoop.ozone.om.OzoneManager;
+import org.apache.hadoop.ozone.om.ratis.utils.OzoneManagerRatisUtils;
 import org.apache.ratis.protocol.ClientId;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -41,6 +42,8 @@ public class FinalizationStateManagerImpl implements FinalizationStateManager {
   @VisibleForTesting
   public static final Logger LOG =
       LoggerFactory.getLogger(FinalizationStateManagerImpl.class);
+  private static final ClientId CLIENT_ID = ClientId.randomId();
+
   private final OzoneManager ozoneManager;
   private final OMLayoutVersionManager versionManager;
   private final ReadWriteLock lock;
@@ -78,17 +81,17 @@ public class FinalizationStateManagerImpl implements FinalizationStateManager {
   }
 
   @Override
-  public void finalizeLayoutFeature(Integer layoutVersion, String clientId) throws IOException {
+  public void finalizeLayoutFeature(Integer layoutVersion) {
     LayoutVersion lv = LayoutVersion.newBuilder()
             .setVersion(layoutVersion)
             .build();
     final OMRequest omRequest = OMRequest.newBuilder()
             .setCmdType(FinalizeLayoutFeature)
-            .setClientId(clientId)
+            .setClientId(ClientId.randomId().toString())
             .setLayoutVersion(lv)
             .build();
       try {
-          ozoneManager.getOmRatisServer().submitRequest(omRequest);
+        OzoneManagerRatisUtils.submitRequest(ozoneManager, omRequest, CLIENT_ID, 0);
       } catch (ServiceException e) {
         LOG.error("Finalize layout feature request failed.", e);
       }
