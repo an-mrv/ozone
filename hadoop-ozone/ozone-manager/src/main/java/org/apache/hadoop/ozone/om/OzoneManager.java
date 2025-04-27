@@ -3409,9 +3409,6 @@ public final class OzoneManager extends ServiceRuntimeInfoImpl
   @Override
   public StatusAndMessages finalizeUpgrade(String upgradeClientID)
       throws IOException {
-    if (!isLeaderReady()) {
-      throw new OMException("OM is not leader or not ready", INVALID_REQUEST);
-    }
     return finalizationManager.finalizeUpgrade(upgradeClientID);
   }
 
