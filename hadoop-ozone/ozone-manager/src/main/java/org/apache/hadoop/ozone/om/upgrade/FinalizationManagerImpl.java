@@ -61,9 +61,7 @@ public class FinalizationManagerImpl implements FinalizationManager {
   }
 
   @Override
-  public UpgradeFinalizer.StatusAndMessages finalizeUpgrade(
-      String upgradeClientID)
-      throws IOException {
+  public UpgradeFinalizer.StatusAndMessages finalizeUpgrade(String upgradeClientID) throws IOException {
     return upgradeFinalizer.finalize(upgradeClientID, ozoneManager);
   }
 
