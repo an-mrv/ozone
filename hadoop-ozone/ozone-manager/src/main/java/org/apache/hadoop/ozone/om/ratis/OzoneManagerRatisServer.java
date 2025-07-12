@@ -320,6 +320,7 @@ public final class OzoneManagerRatisServer {
             OMRatisHelper.convertRequestToByteString(omRequest)))
         .setType(RaftClientRequest.writeRequestType())
         .build();
+    LOG.info("submitRequest 323");
     RaftClientReply raftClientReply =
         submitRequestToRatis(raftClientRequest);
     LOG.info("submitRequest 325 replied");
