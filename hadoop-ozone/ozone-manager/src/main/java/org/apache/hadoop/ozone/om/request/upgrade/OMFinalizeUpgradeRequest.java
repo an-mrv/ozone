@@ -85,7 +85,6 @@ public class OMFinalizeUpgradeRequest extends OMClientRequest {
 
       String upgradeClientID = request.getUpgradeClientId();
 
-      if (ozoneManager.isLeaderReady()) {
         StatusAndMessages omStatus =
                 ozoneManager.finalizeUpgrade(upgradeClientID);
 
@@ -112,7 +111,6 @@ public class OMFinalizeUpgradeRequest extends OMClientRequest {
         response = new OMFinalizeUpgradeResponse(responseBuilder.build(),
                 ozoneManager.getVersionManager().getMetadataLayoutVersion());
         LOG.info("Returning response: {}", response);
-      }
     } catch (IOException e) {
       exception = e;
       response = new OMFinalizeUpgradeResponse(
