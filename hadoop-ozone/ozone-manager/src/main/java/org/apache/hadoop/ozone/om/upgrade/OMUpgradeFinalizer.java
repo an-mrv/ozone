@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
+ * <p>
+ * http://www.apache.org/licenses/LICENSE-2.0
+ * <p>
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -18,31 +18,80 @@
 
 package org.apache.hadoop.ozone.om.upgrade;
 
+import com.google.protobuf.ServiceException;
 import org.apache.hadoop.ozone.common.Storage;
 import org.apache.hadoop.ozone.om.OzoneManager;
 
 import java.io.IOException;
 
+import org.apache.hadoop.ozone.om.ratis.utils.OzoneManagerRatisUtils;
+import org.apache.hadoop.ozone.protocol.proto.OzoneManagerProtocolProtos.OMRequest;
 import org.apache.hadoop.ozone.upgrade.BasicUpgradeFinalizer;
 import org.apache.hadoop.ozone.upgrade.LayoutFeature;
 import org.apache.hadoop.ozone.upgrade.UpgradeException;
+import org.apache.ratis.protocol.ClientId;
+
+import static org.apache.hadoop.ozone.protocol.proto.OzoneManagerProtocolProtos.Type.AddFinalizingMark;
+import static org.apache.hadoop.ozone.protocol.proto.OzoneManagerProtocolProtos.Type.RemoveFinalizingMark;
 
 /**
  * UpgradeFinalizer implementation for the Ozone Manager service.
  */
 public class OMUpgradeFinalizer extends BasicUpgradeFinalizer<OzoneManager,
     OMLayoutVersionManager> {
+  private static final ClientId CLIENT_ID = ClientId.randomId();
 
   public OMUpgradeFinalizer(OMLayoutVersionManager versionManager) {
     super(versionManager);
   }
 
   @Override
+  public void preFinalizeUpgrade(OzoneManager ozoneManager) {
+    final OMRequest omRequest = OMRequest.newBuilder()
+            .setCmdType(AddFinalizingMark)
+            .setClientId(ClientId.randomId().toString())
+            .build();
+    try {
+      LOG.info("Try to send request to add finalizing mark");
+      OzoneManagerRatisUtils.submitRequest(ozoneManager, omRequest, CLIENT_ID, 0);
+      LOG.info("Successfully send request to add finalizing mark");
+    } catch (Throwable e) {
+      LOG.error("Add finalizing mark request failed.", e);
+    }
+  }
+
+  @Override
   public void finalizeLayoutFeature(LayoutFeature layoutFeature,
-      OzoneManager om) throws UpgradeException {
+                                    OzoneManager om) throws UpgradeException {
+    try {
+      om.getFinalizationManager().getFinalizationStateManager()
+          .finalizeLayoutFeature(layoutFeature.layoutVersion());
+    } catch (IOException ex) {
+      throw new UpgradeException(ex,
+          UpgradeException.ResultCodes.LAYOUT_FEATURE_FINALIZATION_FAILED);
+    }
+  }
+
+
+  void replicatedFinalizationSteps(OMLayoutFeature layoutFeature, OzoneManager om) throws UpgradeException {
     super.finalizeLayoutFeature(layoutFeature,
         layoutFeature.action(LayoutFeature.UpgradeActionType.ON_FINALIZE),
         om.getOmStorage());
+  }
+
+  @Override
+  public void postFinalizeUpgrade(OzoneManager ozoneManager) {
+    final OMRequest omRequest = OMRequest.newBuilder()
+            .setCmdType(RemoveFinalizingMark)
+            .setClientId(ClientId.randomId().toString())
+            .build();
+    try {
+      LOG.info("Try to send request to remove finalizing mark");
+      OzoneManagerRatisUtils.submitRequest(ozoneManager, omRequest, CLIENT_ID, 0);
+      LOG.info("Successfully send request to remove finalizing mark");
+    } catch (Throwable e) {
+      LOG.error("Remove finalizing mark request failed.", e);
+    }
   }
 
   public void runPrefinalizeStateActions(Storage storage, OzoneManager om)

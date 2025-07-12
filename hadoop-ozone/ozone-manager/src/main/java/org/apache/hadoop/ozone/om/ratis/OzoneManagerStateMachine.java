@@ -95,6 +95,7 @@ public class OzoneManagerStateMachine extends BaseStateMachine {
   private final boolean isTracingEnabled;
   private final AtomicInteger statePausedCount = new AtomicInteger(0);
   private final String threadPrefix;
+  private final boolean isInitialized;
 
   /** The last {@link TermIndex} received from {@link #notifyTermIndexUpdated(long, long)}. */
   private volatile TermIndex lastNotifiedTermIndex = TermIndex.valueOf(0, RaftLog.INVALID_LOG_INDEX);
@@ -124,6 +125,7 @@ public class OzoneManagerStateMachine extends BaseStateMachine {
     this.installSnapshotExecutor =
         HadoopExecutors.newSingleThreadExecutor(installSnapshotThreadFactory);
     this.nettyMetrics = NettyMetrics.create();
+    isInitialized = true;
   }
 
   /**
@@ -160,6 +162,14 @@ public class OzoneManagerStateMachine extends BaseStateMachine {
                                   RaftPeerId newLeaderId) {
     // Initialize OMHAMetrics
     ozoneManager.omHAMetricsInit(newLeaderId.toString());
+  }
+
+  @Override
+  public void notifyLeaderReady() {
+    if (!isInitialized) {
+      return;
+    }
+    ozoneManager.getFinalizationManager().onLeaderReady();
   }
 
   /** Notified by Ratis for non-StateMachine term-index update. */

@@ -315,6 +315,9 @@ public final class OmUtils {
       // TODO: Remove once migrated to proto3 and mark fields in proto
       // as deprecated
     case FinalizeUpgrade:
+    case AddFinalizingMark:
+    case FinalizeLayoutFeature:
+    case RemoveFinalizingMark:
     case Prepare:
     case CancelPrepare:
     case DeleteOpenKeys:

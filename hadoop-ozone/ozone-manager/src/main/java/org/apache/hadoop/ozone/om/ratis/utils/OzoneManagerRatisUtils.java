@@ -82,9 +82,12 @@ import org.apache.hadoop.ozone.om.request.snapshot.OMSnapshotMoveTableKeysReques
 import org.apache.hadoop.ozone.om.request.snapshot.OMSnapshotPurgeRequest;
 import org.apache.hadoop.ozone.om.request.snapshot.OMSnapshotRenameRequest;
 import org.apache.hadoop.ozone.om.request.snapshot.OMSnapshotSetPropertyRequest;
+import org.apache.hadoop.ozone.om.request.upgrade.OMAddFinalizingMarkRequest;
 import org.apache.hadoop.ozone.om.request.upgrade.OMCancelPrepareRequest;
+import org.apache.hadoop.ozone.om.request.upgrade.OMFinalizeLayoutFeatureRequest;
 import org.apache.hadoop.ozone.om.request.upgrade.OMFinalizeUpgradeRequest;
 import org.apache.hadoop.ozone.om.request.upgrade.OMPrepareRequest;
+import org.apache.hadoop.ozone.om.request.upgrade.OMRemoveFinalizingMarkRequest;
 import org.apache.hadoop.ozone.om.request.util.OMEchoRPCWriteRequest;
 import org.apache.hadoop.ozone.om.request.volume.OMQuotaRepairRequest;
 import org.apache.hadoop.ozone.om.request.volume.OMVolumeCreateRequest;
@@ -193,6 +196,12 @@ public final class OzoneManagerRatisUtils {
       return new S3GetSecretRequest(omRequest);
     case FinalizeUpgrade:
       return new OMFinalizeUpgradeRequest(omRequest);
+    case AddFinalizingMark:
+      return new OMAddFinalizingMarkRequest(omRequest);
+    case RemoveFinalizingMark:
+      return new OMRemoveFinalizingMarkRequest(omRequest);
+    case FinalizeLayoutFeature:
+      return new OMFinalizeLayoutFeatureRequest(omRequest);
     case Prepare:
       return new OMPrepareRequest(omRequest);
     case CancelPrepare:
@@ -511,9 +520,11 @@ public final class OzoneManagerRatisUtils {
 
   public static OzoneManagerProtocolProtos.OMResponse submitRequest(
       OzoneManager om, OMRequest omRequest, ClientId clientId, long callId) throws ServiceException {
-    if (om.isRatisEnabled()) {
+    if (!om.isRatisEnabled()) {
+      LOG.info("ratisEnabled");
       return om.getOmRatisServer().submitRequest(omRequest, clientId, callId);
     } else {
+      LOG.info("ratisDisabled");
       return om.getOmServerProtocol().submitRequest(NULL_RPC_CONTROLLER, omRequest);
     }
   }

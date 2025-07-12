@@ -61,7 +61,7 @@ public class OMFinalizeUpgradeRequest extends OMClientRequest {
 
   @Override
   public OMClientResponse validateAndUpdateCache(OzoneManager ozoneManager, TermIndex termIndex) {
-    LOG.trace("Request: {}", getOmRequest());
+    LOG.info("Request: {}", getOmRequest());
     AuditLogger auditLogger = ozoneManager.getAuditLogger();
     OzoneManagerProtocolProtos.UserInfo userInfo = getOmRequest().getUserInfo();
     OMResponse.Builder responseBuilder =
@@ -85,30 +85,32 @@ public class OMFinalizeUpgradeRequest extends OMClientRequest {
 
       String upgradeClientID = request.getUpgradeClientId();
 
-      StatusAndMessages omStatus =
-          ozoneManager.finalizeUpgrade(upgradeClientID);
+        StatusAndMessages omStatus =
+                ozoneManager.finalizeUpgrade(upgradeClientID);
 
-      UpgradeFinalizationStatus.Status protoStatus =
-          UpgradeFinalizationStatus.Status.valueOf(omStatus.status().name());
-      UpgradeFinalizationStatus responseStatus =
-          UpgradeFinalizationStatus.newBuilder()
-              .setStatus(protoStatus)
-              .build();
+        UpgradeFinalizationStatus.Status protoStatus =
+                UpgradeFinalizationStatus.Status.valueOf(omStatus.status().name());
+        UpgradeFinalizationStatus responseStatus =
+                UpgradeFinalizationStatus.newBuilder()
+                        .setStatus(protoStatus)
+                        .build();
 
-      OMMetadataManager omMetadataManager = ozoneManager.getMetadataManager();
-      int lV = ozoneManager.getVersionManager().getMetadataLayoutVersion();
-      omMetadataManager.getMetaTable().addCacheEntry(
-          new CacheKey<>(LAYOUT_VERSION_KEY),
-          CacheValue.get(termIndex.getIndex(), String.valueOf(lV)));
 
-      FinalizeUpgradeResponse omResponse =
-          FinalizeUpgradeResponse.newBuilder()
-              .setStatus(responseStatus)
-              .build();
-      responseBuilder.setFinalizeUpgradeResponse(omResponse);
-      response = new OMFinalizeUpgradeResponse(responseBuilder.build(),
-          ozoneManager.getVersionManager().getMetadataLayoutVersion());
-      LOG.trace("Returning response: {}", response);
+        OMMetadataManager omMetadataManager = ozoneManager.getMetadataManager();
+        int lV = ozoneManager.getVersionManager().getMetadataLayoutVersion();
+        omMetadataManager.getMetaTable().addCacheEntry(
+                new CacheKey<>(LAYOUT_VERSION_KEY),
+                CacheValue.get(termIndex.getIndex(), String.valueOf(lV)));
+
+        FinalizeUpgradeResponse omResponse =
+                FinalizeUpgradeResponse.newBuilder()
+                        .setStatus(responseStatus)
+                        .build();
+
+        responseBuilder.setFinalizeUpgradeResponse(omResponse);
+        response = new OMFinalizeUpgradeResponse(responseBuilder.build(),
+                ozoneManager.getVersionManager().getMetadataLayoutVersion());
+        LOG.info("Returning response: {}", response);
     } catch (IOException e) {
       exception = e;
       response = new OMFinalizeUpgradeResponse(

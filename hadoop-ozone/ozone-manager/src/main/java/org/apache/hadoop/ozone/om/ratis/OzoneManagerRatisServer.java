@@ -289,6 +289,7 @@ public final class OzoneManagerRatisServer {
 
   private RaftClientReply submitRequestToRatis(
       RaftClientRequest raftClientRequest) throws ServiceException {
+    LOG.info("submitRequestToRatis 292");
     return captureLatencyNs(
         perfMetrics.getSubmitToRatisLatencyNs(),
         () -> submitRequestToRatisImpl(raftClientRequest));
@@ -309,6 +310,7 @@ public final class OzoneManagerRatisServer {
    * @throws ServiceException
    */
   public OMResponse submitRequest(OMRequest omRequest, ClientId cliId, long callId) throws ServiceException {
+    LOG.info("submitRequest 312");
     RaftClientRequest raftClientRequest = RaftClientRequest.newBuilder()
         .setClientId(cliId)
         .setServerId(getRaftPeerId())
@@ -318,19 +320,24 @@ public final class OzoneManagerRatisServer {
             OMRatisHelper.convertRequestToByteString(omRequest)))
         .setType(RaftClientRequest.writeRequestType())
         .build();
+    LOG.info("submitRequest 323");
     RaftClientReply raftClientReply =
         submitRequestToRatis(raftClientRequest);
+    LOG.info("submitRequest 325 replied");
     return createOmResponse(omRequest, raftClientReply);
   }
 
   private RaftClientReply submitRequestToRatisImpl(
       RaftClientRequest raftClientRequest) throws ServiceException {
     try {
+      LOG.info("submitRequestToRatisImpl 331");
       return server.submitClientRequestAsync(raftClientRequest)
           .get();
     } catch (ExecutionException | IOException ex) {
+      LOG.info("submitRequestToRatisImpl 336");
       throw new ServiceException(ex.getMessage(), ex);
     } catch (InterruptedException ex) {
+      LOG.info("submitRequestToRatisImpl 339");
       Thread.currentThread().interrupt();
       throw new ServiceException(ex.getMessage(), ex);
     }
@@ -539,6 +546,7 @@ public final class OzoneManagerRatisServer {
     }
 
     try {
+      LOG.info("createOmResponseImpl 545");
       return OMRatisHelper.getOMResponseFromRaftClientReply(reply);
     } catch (IOException ex) {
       if (ex.getMessage() != null) {

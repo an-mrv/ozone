@@ -109,7 +109,11 @@ import org.apache.hadoop.ozone.om.service.OMRangerBGSyncService;
 import org.apache.hadoop.ozone.om.service.QuotaRepairTask;
 import org.apache.hadoop.ozone.om.snapshot.OmSnapshotUtils;
 import org.apache.hadoop.ozone.om.snapshot.ReferenceCounted;
+import org.apache.hadoop.ozone.om.upgrade.FinalizationManager;
+import org.apache.hadoop.ozone.om.upgrade.FinalizationManagerImpl;
 import org.apache.hadoop.ozone.om.upgrade.OMLayoutFeature;
+import org.apache.hadoop.ozone.om.upgrade.OMLayoutVersionManager;
+import org.apache.hadoop.ozone.om.upgrade.OMUpgradeFinalizer;
 import org.apache.hadoop.ozone.security.acl.OzoneAuthorizerFactory;
 import org.apache.hadoop.ozone.snapshot.CancelSnapshotDiffResponse;
 import org.apache.hadoop.ozone.snapshot.ListSnapshotResponse;
@@ -193,8 +197,6 @@ import org.apache.hadoop.hdds.utils.LegacyHadoopConfigurationSource;
 import org.apache.hadoop.hdds.utils.TransactionInfo;
 import org.apache.hadoop.ozone.om.ratis.OzoneManagerRatisServer;
 import org.apache.hadoop.ozone.om.ratis.utils.OzoneManagerRatisUtils;
-import org.apache.hadoop.ozone.om.upgrade.OMLayoutVersionManager;
-import org.apache.hadoop.ozone.om.upgrade.OMUpgradeFinalizer;
 import org.apache.hadoop.ozone.protocol.proto.OzoneManagerAdminProtocolProtos.OzoneManagerAdminService;
 import org.apache.hadoop.ozone.protocol.proto.OzoneManagerProtocolProtos;
 import org.apache.hadoop.ozone.protocol.proto.OzoneManagerProtocolProtos.DBUpdatesRequest;
@@ -389,6 +391,7 @@ public final class OzoneManager extends ServiceRuntimeInfoImpl
   private KeyManager keyManager;
   private PrefixManagerImpl prefixManager;
   private final UpgradeFinalizer<OzoneManager> upgradeFinalizer;
+  private final FinalizationManager finalizationManager;
 
   /**
    * OM super user / admin list.
@@ -746,6 +749,7 @@ public final class OzoneManager extends ServiceRuntimeInfoImpl
     }
 
     bucketUtilizationMetrics = BucketUtilizationMetrics.create(metadataManager);
+    finalizationManager = new FinalizationManagerImpl(this);
   }
 
   public boolean isStopped() {
@@ -891,24 +895,7 @@ public final class OzoneManager extends ServiceRuntimeInfoImpl
     updateActiveSnapshotMetrics();
 
     if (withNewSnapshot) {
-      Integer layoutVersionInDB = getLayoutVersionInDB();
-      if (layoutVersionInDB != null &&
-          versionManager.getMetadataLayoutVersion() < layoutVersionInDB) {
-        LOG.info("New OM snapshot received with higher layout version {}. " +
-            "Attempting to finalize current OM to that version.",
-            layoutVersionInDB);
-        OmUpgradeConfig uConf = configuration.getObject(OmUpgradeConfig.class);
-        upgradeFinalizer.finalizeAndWaitForCompletion(
-            "om-ratis-snapshot", this,
-            uConf.getRatisBasedFinalizationTimeout());
-        if (versionManager.getMetadataLayoutVersion() < layoutVersionInDB) {
-          throw new IOException("Unable to finalize OM to the desired layout " +
-              "version " + layoutVersionInDB + " present in the snapshot DB.");
-        } else {
-          updateLayoutVersionInDB(versionManager, metadataManager);
-        }
-      }
-
+      finalizationManager.reinitialize(metadataManager.getMetaTable());
       instantiatePrepareStateAfterSnapshot();
     } else {
       // Prepare state depends on the transaction ID of metadataManager after a
@@ -1656,6 +1643,14 @@ public final class OzoneManager extends ServiceRuntimeInfoImpl
     return perfMetrics;
   }
 
+  public UpgradeFinalizer<OzoneManager> getUpgradeFinalizer() {
+    return upgradeFinalizer;
+  }
+
+  public FinalizationManager getFinalizationManager() {
+    return finalizationManager;
+  }
+
   /**
    * Start service.
    */
@@ -1688,7 +1683,7 @@ public final class OzoneManager extends ServiceRuntimeInfoImpl
       omRatisServer.start();
     }
 
-    upgradeFinalizer.runPrefinalizeStateActions(omStorage, this);
+    finalizationManager.runPrefinalizeStateActions();
     Integer layoutVersionInDB = getLayoutVersionInDB();
     if (layoutVersionInDB == null ||
         versionManager.getMetadataLayoutVersion() != layoutVersionInDB) {
@@ -3414,18 +3409,14 @@ public final class OzoneManager extends ServiceRuntimeInfoImpl
   @Override
   public StatusAndMessages finalizeUpgrade(String upgradeClientID)
       throws IOException {
-    return upgradeFinalizer.finalize(upgradeClientID, this);
+    return finalizationManager.finalizeUpgrade(upgradeClientID);
   }
 
   @Override
   public StatusAndMessages queryUpgradeFinalizationProgress(
       String upgradeClientID, boolean takeover, boolean readonly
   ) throws IOException {
-    if (readonly) {
-      return new StatusAndMessages(upgradeFinalizer.getStatus(),
-          Collections.emptyList());
-    }
-    return upgradeFinalizer.reportStatus(upgradeClientID, takeover);
+    return finalizationManager.queryUpgradeFinalizationProgress(upgradeClientID, takeover, readonly);
   }
 
   /**

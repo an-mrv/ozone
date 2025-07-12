@@ -154,6 +154,10 @@ enum Type {
   GetQuotaRepairStatus = 135;
   StartQuotaRepair = 136;
   SnapshotMoveTableKeys = 137;
+
+  AddFinalizingMark = 138;
+  RemoveFinalizingMark = 139;
+  FinalizeLayoutFeature = 140;
 }
 
 enum SafeMode {
@@ -297,6 +301,10 @@ message OMRequest {
   optional GetQuotaRepairStatusRequest      GetQuotaRepairStatusRequest    = 133;
   optional StartQuotaRepairRequest          StartQuotaRepairRequest        = 134;
   optional SnapshotMoveTableKeysRequest     SnapshotMoveTableKeysRequest   = 135;
+
+  optional AddFinalizingMarkRequest addFinalizingMarkRequest = 136;
+  optional RemoveFinalizingMarkRequest removeFinalizingMarkRequest = 137;
+  optional FinalizeLayoutFeatureRequest finalizeLayoutFeatureRequest = 138;
 }
 
 message OMResponse {
@@ -427,6 +435,10 @@ message OMResponse {
   optional ServerDefaultsResponse            ServerDefaultsResponse        = 135;
   optional GetQuotaRepairStatusResponse      GetQuotaRepairStatusResponse   = 136;
   optional StartQuotaRepairResponse          StartQuotaRepairResponse       = 137;
+
+  optional AddFinalizingMarkResponse addFinalizingMarkResponse = 138;
+  optional RemoveFinalizingMarkResponse removeFinalizingMarkResponse = 139;
+  optional FinalizeLayoutFeatureResponse finalizeLayoutFeatureResponse = 140;
 }
 
 enum Status {
@@ -1545,6 +1557,27 @@ message FinalizeUpgradeRequest {
 
 message FinalizeUpgradeResponse {
     required hadoop.hdds.UpgradeFinalizationStatus status = 1;
+}
+
+message AddFinalizingMarkRequest {
+  required string upgradeClientId = 1;
+}
+
+message AddFinalizingMarkResponse {
+}
+
+message RemoveFinalizingMarkRequest {
+  required string upgradeClientId = 1;
+}
+
+message RemoveFinalizingMarkResponse {
+}
+
+message FinalizeLayoutFeatureRequest {
+  required string upgradeClientId = 1;
+}
+
+message FinalizeLayoutFeatureResponse {
 }
 
 message FinalizeUpgradeProgressRequest {
