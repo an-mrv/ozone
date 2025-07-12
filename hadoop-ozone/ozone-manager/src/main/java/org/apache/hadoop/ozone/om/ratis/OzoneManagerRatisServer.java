@@ -289,6 +289,7 @@ public final class OzoneManagerRatisServer {
 
   private RaftClientReply submitRequestToRatis(
       RaftClientRequest raftClientRequest) throws ServiceException {
+    LOG.info("submitRequestToRatis 292");
     return captureLatencyNs(
         perfMetrics.getSubmitToRatisLatencyNs(),
         () -> submitRequestToRatisImpl(raftClientRequest));
@@ -309,6 +310,7 @@ public final class OzoneManagerRatisServer {
    * @throws ServiceException
    */
   public OMResponse submitRequest(OMRequest omRequest, ClientId cliId, long callId) throws ServiceException {
+    LOG.info("submitRequest 312");
     RaftClientRequest raftClientRequest = RaftClientRequest.newBuilder()
         .setClientId(cliId)
         .setServerId(getRaftPeerId())
@@ -326,6 +328,7 @@ public final class OzoneManagerRatisServer {
   private RaftClientReply submitRequestToRatisImpl(
       RaftClientRequest raftClientRequest) throws ServiceException {
     try {
+      LOG.info("submitRequestToRatisImpl 331");
       return server.submitClientRequestAsync(raftClientRequest)
           .get();
     } catch (ExecutionException | IOException ex) {
@@ -539,6 +542,7 @@ public final class OzoneManagerRatisServer {
     }
 
     try {
+      LOG.info("createOmResponseImpl 545");
       return OMRatisHelper.getOMResponseFromRaftClientReply(reply);
     } catch (IOException ex) {
       if (ex.getMessage() != null) {

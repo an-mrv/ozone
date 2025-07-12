@@ -34,7 +34,7 @@ public class OMAddFinalizingMarkRequest extends OMClientRequest {
 
     @Override
     public OMClientResponse validateAndUpdateCache(OzoneManager ozoneManager, TermIndex termIndex) {
-        LOG.trace("Request: {}", getOmRequest());
+        LOG.info("Request addFinalizingMark: {}", getOmRequest());
         AuditLogger auditLogger = ozoneManager.getAuditLogger();
         OMResponse.Builder responseBuilder =
                 OmResponseUtil.getOMResponseBuilder(getOmRequest());
@@ -55,7 +55,7 @@ public class OMAddFinalizingMarkRequest extends OMClientRequest {
                             .build();
             responseBuilder.setAddFinalizingMarkResponse(omResponse);
             response = new OMAddFinalizingMarkResponse(responseBuilder.build());
-            LOG.trace("Returning response: {}", response);
+            LOG.info("Returning response addFinalizingMark: {}", response);
         } catch (IOException e) {
             exception = e;
             response = new OMAddFinalizingMarkResponse(
