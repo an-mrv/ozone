@@ -94,7 +94,7 @@ public class FinalizationStateManagerImpl implements FinalizationStateManager {
         LOG.info("Try to send request to finalize LF");
         OzoneManagerRatisUtils.submitRequest(ozoneManager, omRequest, CLIENT_ID, 0);
         LOG.info("Successfully send request to finalize LF");
-      } catch (ServiceException e) {
+      } catch (Throwable e) {
         LOG.error("Finalize layout feature request failed.", e);
       }
   }

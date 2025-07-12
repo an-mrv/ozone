@@ -31,7 +31,7 @@ public class OMFinalizeLayoutFeatureRequest extends OMClientRequest  {
 
     @Override
     public OMClientResponse validateAndUpdateCache(OzoneManager ozoneManager, TermIndex termIndex) {
-        LOG.trace("Request: {}", getOmRequest());
+        LOG.info("Request: {}", getOmRequest());
         AuditLogger auditLogger = ozoneManager.getAuditLogger();
         OzoneManagerProtocolProtos.OMResponse.Builder responseBuilder =
                 OmResponseUtil.getOMResponseBuilder(getOmRequest());
@@ -55,7 +55,7 @@ public class OMFinalizeLayoutFeatureRequest extends OMClientRequest  {
             responseBuilder.setFinalizeLayoutFeatureResponse(omResponse);
             response = new OMFinalizeLayoutFeatureResponse(responseBuilder.build(),
                     ozoneManager.getVersionManager().getMetadataLayoutVersion());
-            LOG.trace("Returning response: {}", response);
+            LOG.info("Returning response: {}", response);
         } catch (IOException e) {
             exception = e;
             response = new OMFinalizeLayoutFeatureResponse(

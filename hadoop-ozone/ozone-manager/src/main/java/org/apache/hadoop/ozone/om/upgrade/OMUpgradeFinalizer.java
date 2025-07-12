@@ -55,7 +55,7 @@ public class OMUpgradeFinalizer extends BasicUpgradeFinalizer<OzoneManager,
       LOG.info("Try to send request to add finalizing mark");
       OzoneManagerRatisUtils.submitRequest(ozoneManager, omRequest, CLIENT_ID, 0);
       LOG.info("Successfully send request to add finalizing mark");
-    } catch (ServiceException e) {
+    } catch (Throwable e) {
       LOG.error("Add finalizing mark request failed.", e);
     }
   }
@@ -89,7 +89,7 @@ public class OMUpgradeFinalizer extends BasicUpgradeFinalizer<OzoneManager,
       LOG.info("Try to send request to remove finalizing mark");
       OzoneManagerRatisUtils.submitRequest(ozoneManager, omRequest, CLIENT_ID, 0);
       LOG.info("Successfully send request to remove finalizing mark");
-    } catch (ServiceException e) {
+    } catch (Throwable e) {
       LOG.error("Remove finalizing mark request failed.", e);
     }
   }

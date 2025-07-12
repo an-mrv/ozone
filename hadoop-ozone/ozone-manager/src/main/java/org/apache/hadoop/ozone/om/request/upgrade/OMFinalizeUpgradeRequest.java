@@ -61,7 +61,7 @@ public class OMFinalizeUpgradeRequest extends OMClientRequest {
 
   @Override
   public OMClientResponse validateAndUpdateCache(OzoneManager ozoneManager, TermIndex termIndex) {
-    LOG.trace("Request: {}", getOmRequest());
+    LOG.info("Request: {}", getOmRequest());
     AuditLogger auditLogger = ozoneManager.getAuditLogger();
     OzoneManagerProtocolProtos.UserInfo userInfo = getOmRequest().getUserInfo();
     OMResponse.Builder responseBuilder =
@@ -108,7 +108,7 @@ public class OMFinalizeUpgradeRequest extends OMClientRequest {
       responseBuilder.setFinalizeUpgradeResponse(omResponse);
       response = new OMFinalizeUpgradeResponse(responseBuilder.build(),
           ozoneManager.getVersionManager().getMetadataLayoutVersion());
-      LOG.trace("Returning response: {}", response);
+      LOG.info("Returning response: {}", response);
     } catch (IOException e) {
       exception = e;
       response = new OMFinalizeUpgradeResponse(

@@ -322,6 +322,7 @@ public final class OzoneManagerRatisServer {
         .build();
     RaftClientReply raftClientReply =
         submitRequestToRatis(raftClientRequest);
+    LOG.info("submitRequest 325 replied");
     return createOmResponse(omRequest, raftClientReply);
   }
 
@@ -332,8 +333,10 @@ public final class OzoneManagerRatisServer {
       return server.submitClientRequestAsync(raftClientRequest)
           .get();
     } catch (ExecutionException | IOException ex) {
+      LOG.info("submitRequestToRatisImpl 336");
       throw new ServiceException(ex.getMessage(), ex);
     } catch (InterruptedException ex) {
+      LOG.info("submitRequestToRatisImpl 339");
       Thread.currentThread().interrupt();
       throw new ServiceException(ex.getMessage(), ex);
     }
